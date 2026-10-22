@@ -1900,9 +1900,9 @@ pub async fn consume_reset_credit(
     })
 }
 
-/// 默认唤醒模型（实测 ChatGPT 账号 codex responses 接口当前接受 gpt-5.5；
-/// gpt-5-codex / gpt-5.3-codex 等已被该端点拒绝）。
-pub const DEFAULT_WAKEUP_MODEL: &str = "gpt-5.5";
+/// Default wakeup model for a minimal window-prime request.
+/// Keep this compatible with the ChatGPT-authenticated Codex Responses endpoint.
+pub const DEFAULT_WAKEUP_MODEL: &str = "gpt-6-luna";
 
 /// 唤醒结果，回传给前端
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2129,6 +2129,11 @@ mod tests {
             .or_else(|| body.get("isValid").and_then(|v| v.as_bool()))
             .unwrap_or(true);
         Ok((remaining, unit, is_active))
+    }
+
+    #[test]
+    fn wakeup_uses_current_lightweight_model() {
+        assert_eq!(DEFAULT_WAKEUP_MODEL, "gpt-6-luna");
     }
 
     #[test]
