@@ -613,6 +613,33 @@ fn set_account_window_priming(
     Ok(())
 }
 
+/// Explicitly queue one new Window Priming attempt for a single account.
+#[tauri::command]
+fn retry_account_window_priming(
+    state: State<AppState>,
+    app: tauri::AppHandle,
+    id: String,
+) -> Result<(), String> {
+    {
+        let mut store = state.store.lock().map_err(|e| e.to_string())?;
+        let account = store.accounts.get_mut(&id).ok_or("账号不存在")?;
+        if !account.is_chatgpt_oauth() || !account.window_priming.enabled() {
+            return Err("请先启用此 ChatGPT 账号的周期保鲜".to_string());
+        }
+        let prime = &mut account.window_priming;
+        if prime.bootstrap_request_id.is_some()
+            && prime.bootstrap_request_id != prime.last_bootstrap_request_id
+        {
+            return Err("已有待处理的周期保鲜请求，请勿重复触发".to_string());
+        }
+        // Only the periodic worker may dispatch this ID once.
+        prime.bootstrap_request_id = Some(uuid::Uuid::new_v4().to_string());
+        store.save()?;
+    }
+    let _ = app.emit("accounts-updated", ());
+    Ok(())
+}
+
 /// 更新 Relay usage 专用网页登录凭证（MiMo Cookie、StepFun Oasis-Token 等控制台配额接口使用）。
 #[tauri::command]
 fn update_relay_usage_cookie(
@@ -2842,6 +2869,10 @@ pub fn start_quota_refresh(
                     .collect()
             };
 
+            for target in &targets {
+                if target.prime_due.any() {
+                }
+            }
             for target in &targets {
                 let id = &target.id;
                 let name = &target.name;
@@ -6494,6 +6525,7 @@ pub fn run() {
             delete_account,
             update_account,
             set_account_window_priming,
+            retry_account_window_priming,
             update_relay_usage_cookie,
             set_account_inactive_refresh_enabled,
             set_session_anchor,
