@@ -2018,7 +2018,7 @@ fn wakeup_stream_completed(sse: &str) -> bool {
                 completed = value.get("response")
                     .and_then(|r| r.get("status"))
                     .and_then(Value::as_str)
-                    .is_none_or(|status| status == "completed");
+                    .is_some_and(|status| status == "completed");
             }
             Some("response.failed" | "response.incomplete" | "error") => return false,
             _ => {}
@@ -2142,6 +2142,8 @@ mod tests {
         assert!(!wakeup_stream_completed("data: {\"type\":\"response.created\"}\n"));
         assert!(!wakeup_stream_completed("data: {\"type\":\"response.failed\"}\n"));
         assert!(!wakeup_stream_completed("data: {\"type\":\"response.completed\",\"response\":{\"status\":\"failed\"}}\n"));
+        assert!(!wakeup_stream_completed("data: {\"type\":\"response.completed\"}\n"));
+        assert!(!wakeup_stream_completed("data: {\"type\":\"response.completed\",\"response\":{}}\n"));
     }
 
     #[test]
